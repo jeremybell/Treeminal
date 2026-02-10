@@ -70,6 +70,8 @@
                 <outlet property="menuUndo" destination="r83-CV-syt" id="bU9-0b-xgQ"/>
                 <outlet property="menuUseAsDefault" destination="TrB-O8-g8H" id="af4-Jh-2HU"/>
                 <outlet property="menuZoomSplit" destination="oPd-mn-IEH" id="wTu-jK-egI"/>
+                <outlet property="menuToggleSidebar" destination="wsp-sidebar-001" id="wsp-sidebar-out"/>
+                <outlet property="menuAddRepository" destination="wsp-addrepo-001" id="wsp-addrepo-out"/>
             </connections>
         </customObject>
         <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
@@ -156,6 +158,13 @@
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="newTab:" target="-1" id="KoW-K7-hw5"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="wsp-sep-001"/>
+                            <menuItem title="Add Repository..." id="wsp-addrepo-001">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="addRepository:" target="bbz-4X-AYv" id="wsp-addrepo-con"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="m54-Is-iLE"/>
@@ -306,6 +315,13 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="View" id="m6z-2H-VW7">
                         <items>
+                            <menuItem title="Toggle Sidebar" keyEquivalent="s" id="wsp-sidebar-001">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="toggleSidebar:" target="bbz-4X-AYv" id="wsp-sidebar-con"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="wsp-sep-002"/>
                             <menuItem title="Reset Font Size" id="Jah-MY-aLX">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>

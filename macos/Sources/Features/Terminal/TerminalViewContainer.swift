@@ -5,20 +5,26 @@ import SwiftUI
 /// Modifying `NSThemeFrame` can sometimes be unpredictable.
 class TerminalViewContainer<ViewModel: TerminalViewModel>: NSView {
     private let terminalView: NSView
-
-    /// Glass effect view for liquid glass background when transparency is enabled
-    private var glassEffectView: NSView?
-    private var glassTopConstraint: NSLayoutConstraint?
-    private var derivedConfig: DerivedConfig
+    private var glassHelper: GlassEffectHelper
 
     init(ghostty: Ghostty.App, viewModel: ViewModel, delegate: (any TerminalViewDelegate)? = nil) {
-        self.derivedConfig = DerivedConfig(config: ghostty.config)
         self.terminalView = NSHostingView(rootView: TerminalView(
             ghostty: ghostty,
             viewModel: viewModel,
             delegate: delegate
         ))
+        // Placeholder init -- will be replaced in setup() once super.init is done
+        self.glassHelper = GlassEffectHelper(
+            hostView: NSView(),
+            contentView: self.terminalView,
+            config: ghostty.config
+        )
         super.init(frame: .zero)
+        self.glassHelper = GlassEffectHelper(
+            hostView: self,
+            contentView: terminalView,
+            config: ghostty.config
+        )
         setup()
     }
 
@@ -54,107 +60,19 @@ class TerminalViewContainer<ViewModel: TerminalViewModel>: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        updateGlassEffectIfNeeded()
-        updateGlassEffectTopInsetIfNeeded()
+        glassHelper.updateGlassEffectIfNeeded()
+        glassHelper.updateGlassEffectTopInsetIfNeeded()
     }
 
     override func layout() {
         super.layout()
-        updateGlassEffectTopInsetIfNeeded()
+        glassHelper.updateGlassEffectTopInsetIfNeeded()
     }
 
     @objc private func ghosttyConfigDidChange(_ notification: Notification) {
         guard let config = notification.userInfo?[
             Notification.Name.GhosttyConfigChangeKey
         ] as? Ghostty.Config else { return }
-        let newValue = DerivedConfig(config: config)
-        guard newValue != derivedConfig else { return }
-        derivedConfig = newValue
-        DispatchQueue.main.async(execute: updateGlassEffectIfNeeded)
-    }
-}
-
-// MARK: Glass
-
-private extension TerminalViewContainer {
-#if compiler(>=6.2)
-    @available(macOS 26.0, *)
-    func addGlassEffectViewIfNeeded() -> NSGlassEffectView? {
-        if let existed = glassEffectView as? NSGlassEffectView {
-            updateGlassEffectTopInsetIfNeeded()
-            return existed
-        }
-        guard let themeFrameView = window?.contentView?.superview else {
-            return nil
-        }
-        let effectView = NSGlassEffectView()
-        addSubview(effectView, positioned: .below, relativeTo: terminalView)
-        effectView.translatesAutoresizingMaskIntoConstraints = false
-        glassTopConstraint = effectView.topAnchor.constraint(
-            equalTo: topAnchor,
-            constant: -themeFrameView.safeAreaInsets.top
-        )
-        if let glassTopConstraint {
-            NSLayoutConstraint.activate([
-                glassTopConstraint,
-                effectView.leadingAnchor.constraint(equalTo: leadingAnchor),
-                effectView.bottomAnchor.constraint(equalTo: bottomAnchor),
-                effectView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            ])
-        }
-        glassEffectView = effectView
-        return effectView
-    }
-#endif // compiler(>=6.2)
-
-    func updateGlassEffectIfNeeded() {
-#if compiler(>=6.2)
-        guard #available(macOS 26.0, *), derivedConfig.backgroundBlur.isGlassStyle else {
-            glassEffectView?.removeFromSuperview()
-            glassEffectView = nil
-            glassTopConstraint = nil
-            return
-        }
-        guard let effectView = addGlassEffectViewIfNeeded() else {
-            return
-        }
-        switch derivedConfig.backgroundBlur {
-        case .macosGlassRegular:
-            effectView.style = NSGlassEffectView.Style.regular
-        case .macosGlassClear:
-            effectView.style = NSGlassEffectView.Style.clear
-        default:
-            break
-        }
-        let backgroundColor = (window as? TerminalWindow)?.preferredBackgroundColor ?? NSColor(derivedConfig.backgroundColor)
-        effectView.tintColor = backgroundColor
-            .withAlphaComponent(derivedConfig.backgroundOpacity)
-        if let window, window.responds(to: Selector(("_cornerRadius"))), let cornerRadius = window.value(forKey: "_cornerRadius") as? CGFloat {
-            effectView.cornerRadius = cornerRadius
-        }
-#endif // compiler(>=6.2)
-    }
-
-    func updateGlassEffectTopInsetIfNeeded() {
-#if compiler(>=6.2)
-        guard #available(macOS 26.0, *), derivedConfig.backgroundBlur.isGlassStyle else {
-            return
-        }
-        guard glassEffectView != nil else { return }
-        guard let themeFrameView = window?.contentView?.superview else { return }
-        glassTopConstraint?.constant = -themeFrameView.safeAreaInsets.top
-#endif // compiler(>=6.2)
-    }
-
-    struct DerivedConfig: Equatable {
-        var backgroundOpacity: Double = 0
-        var backgroundBlur: Ghostty.Config.BackgroundBlur
-        var backgroundColor: Color = .clear
-
-        init(config: Ghostty.Config) {
-            self.backgroundBlur = config.backgroundBlur
-            self.backgroundOpacity = config.backgroundOpacity
-            self.backgroundColor = config.backgroundColor
-        }
+        glassHelper.updateConfig(config)
     }
 }

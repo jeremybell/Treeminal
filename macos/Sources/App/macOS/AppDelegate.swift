@@ -82,6 +82,9 @@ class AppDelegate: NSObject,
     @IBOutlet private var menuMoveSplitDividerLeft: NSMenuItem?
     @IBOutlet private var menuMoveSplitDividerRight: NSMenuItem?
 
+    @IBOutlet private var menuToggleSidebar: NSMenuItem?
+    @IBOutlet private var menuAddRepository: NSMenuItem?
+
     /// The dock menu
     private var dockMenu: NSMenu = NSMenu()
 
@@ -97,6 +100,9 @@ class AppDelegate: NSObject,
 
     /// The ghostty global state. Only one per process.
     let ghostty: Ghostty.App
+
+    /// The workspace store shared across workspace controllers.
+    let workspaceStore = WorkspaceStore()
 
     /// The global undo manager for app-level state such as window restoration.
     lazy var undoManager = ExpiringUndoManager()
@@ -338,9 +344,9 @@ class AppDelegate: NSObject,
             // is possible to have other windows in a few scenarios:
             //   - if we're opening a URL since `application(_:openFile:)` is called before this.
             //   - if we're restoring from persisted state
-            if TerminalController.all.isEmpty && derivedConfig.initialWindow {
+            if WorkspaceController.all.isEmpty && TerminalController.all.isEmpty && derivedConfig.initialWindow {
                 undoManager.disableUndoRegistration()
-                _ = TerminalController.newWindow(ghostty)
+                _ = WorkspaceController.newWindow(ghostty, workspaceStore: workspaceStore)
                 undoManager.enableUndoRegistration()
             }
         }
@@ -432,7 +438,7 @@ class AppDelegate: NSObject,
         // This is possible with flag set to false if there a race where the
         // window is still initializing and is not visible but the user clicked
         // the dock icon.
-        guard TerminalController.all.isEmpty else { return true }
+        guard TerminalController.all.isEmpty && WorkspaceController.all.isEmpty else { return true }
 
         // If the application isn't active yet then we don't want to process
         // this because we're not ready. This happens sometimes in Xcode runs
@@ -440,7 +446,7 @@ class AppDelegate: NSObject,
         guard applicationHasBecomeActive else { return true }
 
         // No visible windows, open a new one.
-        _ = TerminalController.newWindow(ghostty)
+        _ = WorkspaceController.newWindow(ghostty, workspaceStore: workspaceStore)
         return false
     }
 
@@ -828,14 +834,29 @@ class AppDelegate: NSObject,
     }
 
     @objc private func ghosttyNewWindow(_ notification: Notification) {
-        let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
-        let config = configAny as? Ghostty.SurfaceConfiguration
-        _ = TerminalController.newWindow(ghostty, withBaseConfig: config)
+        // If a workspace controller exists, route new windows to it.
+        // Otherwise fall back to the classic terminal controller.
+        if !WorkspaceController.all.isEmpty {
+            _ = WorkspaceController.newWindow(ghostty, workspaceStore: workspaceStore)
+        } else {
+            let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
+            let config = configAny as? Ghostty.SurfaceConfiguration
+            _ = TerminalController.newWindow(ghostty, withBaseConfig: config)
+        }
     }
 
     @objc private func ghosttyNewTab(_ notification: Notification) {
         guard let surfaceView = notification.object as? Ghostty.SurfaceView else { return }
         guard let window = surfaceView.window else { return }
+
+        // If the focused window is a workspace controller, create a new terminal
+        // in the active worktree instead of creating a tab.
+        if let workspaceController = window.windowController as? WorkspaceController {
+            if let path = workspaceController.activeWorktreePath {
+                workspaceController.openTerminalInWorktree(path: path)
+            }
+            return
+        }
 
         // We only want to listen to new tabs if the focused parent is
         // a regular terminal controller.
@@ -1063,7 +1084,15 @@ class AppDelegate: NSObject,
         didReceive: UNNotificationResponse,
         withCompletionHandler: () -> Void
     ) {
-        ghostty.handleUserNotification(response: didReceive)
+        // Check if this is an agent notification with a worktree path
+        if let worktreePath = didReceive.notification.request.content.userInfo["worktreePath"] as? String {
+            // Find a workspace controller and switch to the worktree
+            if let controller = WorkspaceController.all.first {
+                controller.handleNotificationTap(worktreePath: worktreePath)
+            }
+        } else {
+            ghostty.handleUserNotification(response: didReceive)
+        }
         withCompletionHandler()
     }
 
@@ -1080,11 +1109,19 @@ class AppDelegate: NSObject,
     //MARK: - GhosttyAppDelegate
 
     func findSurface(forUUID uuid: UUID) -> Ghostty.SurfaceView? {
+        // Search terminal controllers
         for c in TerminalController.all {
             for view in c.surfaceTree {
                 if view.id == uuid {
                     return view
                 }
+            }
+        }
+
+        // Search workspace controllers (all worktree split trees)
+        for c in WorkspaceController.all {
+            if let view = c.findSurface(forUUID: uuid) {
+                return view
             }
         }
 
@@ -1136,10 +1173,16 @@ class AppDelegate: NSObject,
     }
 
     @IBAction func newWindow(_ sender: Any?) {
-        _ = TerminalController.newWindow(ghostty)
+        _ = WorkspaceController.newWindow(ghostty, workspaceStore: workspaceStore)
     }
 
     @IBAction func newTab(_ sender: Any?) {
+        // If a workspace controller is key, create a new terminal in the active worktree
+        if let workspaceController = NSApp.keyWindow?.windowController as? WorkspaceController,
+           let path = workspaceController.activeWorktreePath {
+            workspaceController.openTerminalInWorktree(path: path)
+            return
+        }
         _ = TerminalController.newTab(
             ghostty,
             from: TerminalController.preferredParent?.window
@@ -1166,6 +1209,18 @@ class AppDelegate: NSObject,
 
     @IBAction func toggleQuickTerminal(_ sender: Any) {
         quickController.toggle()
+    }
+
+    @IBAction func addRepository(_ sender: Any?) {
+        if let controller = NSApp.keyWindow?.windowController as? WorkspaceController {
+            controller.addRepository(sender)
+        }
+    }
+
+    @IBAction func toggleSidebar(_ sender: Any?) {
+        if let controller = NSApp.keyWindow?.windowController as? WorkspaceController {
+            controller.toggleSidebarAction(sender)
+        }
     }
 
     /// Toggles visibility of all Ghosty Terminal windows. When hidden, activates Ghostty as the frontmost application
