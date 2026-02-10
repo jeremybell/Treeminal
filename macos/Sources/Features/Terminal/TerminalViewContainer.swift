@@ -5,7 +5,7 @@ import SwiftUI
 /// Modifying `NSThemeFrame` can sometimes be unpredictable.
 class TerminalViewContainer<ViewModel: TerminalViewModel>: NSView {
     private let terminalView: NSView
-    private var glassHelper: GlassEffectHelper
+    private var glassHelper: GlassEffectHelper!
 
     init(ghostty: Ghostty.App, viewModel: ViewModel, delegate: (any TerminalViewDelegate)? = nil) {
         self.terminalView = NSHostingView(rootView: TerminalView(
@@ -13,12 +13,6 @@ class TerminalViewContainer<ViewModel: TerminalViewModel>: NSView {
             viewModel: viewModel,
             delegate: delegate
         ))
-        // Placeholder init -- will be replaced in setup() once super.init is done
-        self.glassHelper = GlassEffectHelper(
-            hostView: NSView(),
-            contentView: self.terminalView,
-            config: ghostty.config
-        )
         super.init(frame: .zero)
         self.glassHelper = GlassEffectHelper(
             hostView: self,

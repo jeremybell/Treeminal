@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 /// A small colored dot indicating Claude agent status for a worktree.
@@ -51,7 +52,7 @@ private struct PulseModifier: ViewModifier {
                     isPulsing = true
                 }
             }
-            .onChange(of: shouldPulse) { newValue in
+            .onReceive(Just(shouldPulse)) { newValue in
                 isPulsing = newValue
             }
     }

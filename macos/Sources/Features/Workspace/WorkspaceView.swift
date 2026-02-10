@@ -44,13 +44,14 @@ struct EmptyWorkspaceView: View {
         VStack(spacing: 16) {
             Image(systemName: "sidebar.left")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.tertiary)
+                .symbolRenderingMode(.hierarchical)
             Text("Add a repository to get started")
                 .font(.title3)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text("Use the sidebar to add a git repository\nand navigate between worktrees.")
                 .font(.body)
-                .foregroundColor(.secondary.opacity(0.6))
+                .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .greatestFiniteMagnitude, maxHeight: .greatestFiniteMagnitude)

@@ -6,7 +6,7 @@ import GhosttyKit
 /// Delegates glass effect handling to GlassEffectHelper.
 class WorkspaceViewContainer<ViewModel: TerminalViewModel>: NSView {
     private let hostingView: NSView
-    private var glassHelper: GlassEffectHelper
+    private var glassHelper: GlassEffectHelper!
 
     init(
         ghostty: Ghostty.App,
@@ -28,12 +28,6 @@ class WorkspaceViewContainer<ViewModel: TerminalViewModel>: NSView {
             onResumeSession: onResumeSession,
             onAddTerminal: onAddTerminal
         ))
-        // Placeholder init -- will be replaced after super.init
-        self.glassHelper = GlassEffectHelper(
-            hostView: NSView(),
-            contentView: self.hostingView,
-            config: ghostty.config
-        )
         super.init(frame: .zero)
         self.glassHelper = GlassEffectHelper(
             hostView: self,

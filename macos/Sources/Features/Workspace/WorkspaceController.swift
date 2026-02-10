@@ -91,10 +91,14 @@ class WorkspaceController: BaseTerminalController {
         // Disable tabbing - the sidebar IS the navigation
         window.tabbingMode = .disallowed
 
-        // Setup toolbar with sidebar toggle
+        // Hide the title text — the worktree path in the toolbar serves as the title
+        window.titleVisibility = .hidden
+
+        // Setup toolbar with sidebar toggle and worktree path
         let toolbar = WorkspaceToolbar(identifier: .init("WorkspaceToolbar"))
         window.toolbar = toolbar
-        window.toolbarStyle = .unifiedCompact
+        // .unified gives the full-height glass toolbar on macOS 26+
+        window.toolbarStyle = .unified
         self.workspaceToolbar = toolbar
 
         // Setup the content view
@@ -266,6 +270,15 @@ class WorkspaceController: BaseTerminalController {
     /// Destroys the existing surface tree and creates a fresh one with `claude --resume`.
     func resumeSession(in worktreePath: String, session: ClaudeSession) {
         guard let app = ghostty.app else { return }
+
+        // Validate session ID contains only safe characters (alphanumeric, hyphens, underscores)
+        // to prevent command injection via crafted filenames.
+        let safeChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        guard !session.id.isEmpty,
+              session.id.unicodeScalars.allSatisfy({ safeChars.contains($0) }) else {
+            Self.logger.error("session ID contains unsafe characters, refusing to resume: \(session.id)")
+            return
+        }
 
         // Switch to the worktree if not already active
         if activeWorktreePath != worktreePath {

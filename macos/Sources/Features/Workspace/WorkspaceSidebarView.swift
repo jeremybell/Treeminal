@@ -55,7 +55,7 @@ struct WorkspaceSidebarView: View {
                     } label: {
                         HStack {
                             Image(systemName: "folder.fill.badge.gearshape")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text(repo.name)
                                 .fontWeight(.medium)
                             Spacer()
@@ -65,7 +65,7 @@ struct WorkspaceSidebarView: View {
                             } label: {
                                 Image(systemName: "plus")
                                     .font(.body)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
                             .help("Create worktree")
@@ -117,7 +117,7 @@ struct WorkspaceSidebarView: View {
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
@@ -241,7 +241,7 @@ private struct WorktreeRow: View {
         HStack(spacing: 6) {
             Image(systemName: worktree.isMain ? "house.fill" : "folder")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text(worktree.branch)
                 .lineLimit(1)
@@ -278,7 +278,7 @@ struct CreateWorktreeSheet: View {
                 TextField("Base branch (optional):", text: $baseBranch)
                 Toggle("Create new branch", isOn: $createNewBranch)
             }
-            .formStyle(.grouped)
+            .formStyle(.automatic)
 
             HStack {
                 Button("Cancel") {

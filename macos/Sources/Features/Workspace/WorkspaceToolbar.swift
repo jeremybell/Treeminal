@@ -81,6 +81,7 @@ class WorkspaceToolbar: NSToolbar, NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
             .toggleSidebar,
+            .sidebarTrackingSeparator,
             Self.worktreePathIdentifier,
             .flexibleSpace,
         ]
